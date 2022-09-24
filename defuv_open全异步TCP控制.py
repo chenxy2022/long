@@ -31,6 +31,7 @@ class Spider(object):
                        'search_key': '', 'type': 'open', 'limit': 35, 'order_by': 'id',
                        'p': 1,
                        }
+        self.limit = 35  # tcp连接数
 
     async def _get_content(self, link, filename, session):  # 传入的是图片连接
         response = await session.get(link)
@@ -91,13 +92,13 @@ class Spider(object):
             endpage = d['data']['page_total']
             print(f'总页数:{endpage}')
         se = pd.Series(range(1, endpage + 1))
-        n = 10  # 下载多少页后存储图片，然后继续下一组下载，数值越大，整体下载速度越快。
+        n = 10  # 按照多少页进行一组，异步并发操作
         gdf = se.groupby(se.index // n).agg(['first', 'last'])
-        async with aiohttp.ClientSession(headers=self.headers) as session:
-            # 修改为全异步的，但是并发数太高，会被服务器踢掉。
-            gtasks = [self._group_process(*x, session)
-                      for x in gdf.itertuples(index=False)]
-            await asyncio.gather(*gtasks)
+        async with aiohttp.TCPConnector(limit=self.limit) as conn:  # 限制tcp连接数
+            async with aiohttp.ClientSession(connector=conn, headers=self.headers) as session:
+                gtasks = [self._group_process(*x, session)
+                          for x in gdf.itertuples(index=False)]
+                await asyncio.gather(*gtasks)
 
         end = time.time()
         print('共运行了%s秒' % (end - start))
@@ -106,7 +107,6 @@ class Spider(object):
 def main():
     down_path = r'E:\Download'
     spider = Spider(down_path)
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(spider.run(startpage=1, endpage=100))  # 这里填写开始页数和结束页数，如果结束页数写0，那么会全量下载。
 
 
