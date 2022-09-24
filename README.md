@@ -1,4 +1,4 @@
-# 给龙Q：739807661的图片爬虫代码
+# 给龙Q：图片爬虫代码
 > 采用异步方式 aiohttp,aiofiles   
 > 爬取的网址:http://www.defuv.com/
 ## 爬取步骤：  
