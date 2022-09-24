@@ -1,7 +1,10 @@
-import os, time, json
+import os
+import time
+
+import aiofiles
+import aiohttp
+import asyncio
 import pandas as pd
-import re
-import aiohttp, asyncio, aiofiles
 
 
 class Spider(object):
