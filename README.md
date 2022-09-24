@@ -1,5 +1,6 @@
 # 给龙Q：739807661的图片爬虫代码
 > 采用异步方式 aiohttp,aiofiles   
+> 爬取的网址:http://www.defuv.com/
 ## 爬取步骤：  
 1. 通过网页查看ajax，获取网址和参数信息 
 2. 获取网页的json信息,(难点：json无法解析，采用参数content_type='text/html')
