@@ -97,7 +97,7 @@ class Spider(object):
         endpage:结束页数，默认为1,如果此参数为0，那么就会下载全部页面的图片
         """
         start = time.time()
-        totalnum = endpage * 35
+        totalnum = (endpage - startpage +1) * 35
         if endpage == 0:
             [d] = await asyncio.gather(self._get_total_page())
             endpage = d['data']['page_total']
@@ -106,7 +106,7 @@ class Spider(object):
         t = Process(target=self.jdt, args=(totalnum,))  # 进度条
         # t.daemon = True
         t.start()
-        se = pd.Series(range(1, endpage + 1))
+        se = pd.Series(range(startpage, endpage + 1))
         n = 10  # 按照多少页进行一组，异步并发操作
         gdf = se.groupby(se.index // n).agg(['first', 'last'])
         async with aiohttp.TCPConnector(limit=self.limit) as conn:  # 限制tcp连接数
@@ -139,8 +139,8 @@ def main():
     part = 'open'  # 公开区图案
     spider = Spider(down_path)
     spider.params.update({'type': part})
-    endpage = 100
-    asyncio.run(spider.run(startpage=1, endpage=endpage))  # 这里填写开始页数和结束页数，如果结束页数写0，那么会全量下载。
+    endpage = 2
+    asyncio.run(spider.run(startpage=2, endpage=endpage))  # 这里填写开始页数和结束页数，如果结束页数写0，那么会全量下载。
 
 
 if __name__ == '__main__':
