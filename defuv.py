@@ -5,12 +5,16 @@ import aiofiles
 import aiohttp
 import asyncio
 import pandas as pd
+from tqdm import tqdm
+from time import sleep
+from multiprocessing.dummy import Process
+# from queue import Queue
+from aiohttp import ClientPayloadError
 
 
 class Spider(object):
     """
     下载路径在实例化时候指定，比如:r'd:\test\\'，这个目录如果不存在，会出错。
-    如果想给文件名加前缀，只要在目录下加前缀就行，比如:r'd:\test\abc',那么生成的文件前面都有abc
     默认路径为当前文件下的downpic目录，此目录如果不存在会自动生成
     """
 
@@ -32,11 +36,16 @@ class Spider(object):
                        'p': 1,
                        }
         self.limit = 35  # tcp连接数
+        # self.que = Queue()
+        self.done = False
 
     async def _get_content(self, link, filename, session):  # 传入的是图片连接
-        response = await session.get(link)
-        content = await response.read()
-        await self._write_img(filename, content)
+        try:
+            response = await session.get(link)
+            content = await response.read()
+            await self._write_img(filename, content)
+        except (asyncio.TimeoutError, ClientPayloadError):
+            pass
 
     async def _get_img_links(self, page, session):  # 获取图片连接
         self.params['p'] = page
@@ -54,7 +63,8 @@ class Spider(object):
         file_name = os.path.join(self.down_path, file_name)
         async with aiofiles.open(file_name, 'wb') as f:
             await f.write(content)
-        print('下载第%s张图片成功' % self.num)
+        # print('下载第%s张图片成功' % self.num)
+        # self.que.put(f'下载第{self.num}张图片成功')  # 进度条
         self.num += 1
 
     async def _get_total_page(self):
@@ -87,27 +97,50 @@ class Spider(object):
         endpage:结束页数，默认为1,如果此参数为0，那么就会下载全部页面的图片
         """
         start = time.time()
+        totalnum = endpage * 35
         if endpage == 0:
             [d] = await asyncio.gather(self._get_total_page())
             endpage = d['data']['page_total']
+            totalnum = d['data']['total']  # 总数量
             print(f'总页数:{endpage}')
+        t = Process(target=self.jdt, args=(totalnum,))  # 进度条
+        # t.daemon = True
+        t.start()
         se = pd.Series(range(1, endpage + 1))
-        n = 400  # 下载多少页后存储图片，然后继续下一组下载，数值越大，整体下载速度越快。
+        n = 10  # 按照多少页进行一组，异步并发操作
         gdf = se.groupby(se.index // n).agg(['first', 'last'])
         async with aiohttp.TCPConnector(limit=self.limit) as conn:  # 限制tcp连接数
             async with aiohttp.ClientSession(connector=conn, headers=self.headers) as session:
-                for x in gdf.itertuples(index=False):
-                    await self._group_process(*x, session)
+                gtasks = [self._group_process(*x, session)
+                          for x in gdf.itertuples(index=False)]
+                await asyncio.gather(*gtasks)
 
         end = time.time()
-        print('共运行了%s秒' % (end - start))
+        self.done = True
+        t.join()
+        print('共运行了%.2f秒' % (end - start))
+
+    def jdt(self, totalnum: int):
+        bar = tqdm(total=totalnum)
+        while 1:
+            sleep(.1)
+            bar.set_description(f'下载第{self.num - 1}张图片成功')
+            bar.update(self.num - 1 - bar.last_print_n)
+            if self.done or bar.last_print_n == totalnum:
+                bar.clear()
+                bar.set_description(f'下载第{self.num - 1}张图片成功')
+                bar.update(self.num - 1 - bar.last_print_n)
+                break
 
 
 def main():
     down_path = r'E:\Download'
+    # part = 'material' # 素材区图案
+    part = 'open'  # 公开区图案
     spider = Spider(down_path)
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(spider.run(startpage=1, endpage=100))  # 这里填写开始页数和结束页数，如果结束页数写0，那么会全量下载。
+    spider.params.update({'type': part})
+    endpage = 100
+    asyncio.run(spider.run(startpage=1, endpage=endpage))  # 这里填写开始页数和结束页数，如果结束页数写0，那么会全量下载。
 
 
 if __name__ == '__main__':
