@@ -87,7 +87,8 @@ class Spider(object):
 
         cropped = img.crop((x1, y1, x2, y2))
         转换 = cropped.convert('RGB')
-        转换.save(output_fullname)  # 保存
+        self._resize_image(BytesIO(转换), outfile=output_fullname)
+        # 转换.save(output_fullname)  # 保存
 
     @retry(stop_max_attempt_number=5, wait_fixed=2000)
     async def _get_content(self, url, ):  # 传入的是图片连接
