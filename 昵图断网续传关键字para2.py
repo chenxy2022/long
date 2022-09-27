@@ -5,17 +5,17 @@
 如果断网重新在断网页重新开始下载。用manager().dict()进行进程间传输数据。
 需要安装 pip install retrying
 """
-import requests
 import os
 import time
 from datetime import datetime
+from io import BytesIO
+from multiprocessing import Process, Manager
+
 import aiohttp
 import asyncio
-from lxml import etree
-from multiprocessing import Process, Manager
-from io import BytesIO
+import requests
 from PIL import Image
-
+from lxml import etree
 from retrying import retry
 
 
@@ -41,14 +41,14 @@ class Spider(object):
             if not os.path.exists(f_path):
                 os.makedirs(f_path)
 
-    def _resize_image(self, infile, outfile='', maxsize=308):
+    def _resize_image(self, infile, outfile='', maxsize=308, is_file=True):
         """修改图片尺寸
         :param infile: 图片源文件
         :param outfile: 输出文件名，如果为空，那么直接修改原图片
         :param maxsize: 最大长宽
         :return:
         """
-        im = Image.open(infile)
+        im = Image.open(infile) if is_file else infile
         immax = max(im.size)
         if immax > maxsize:
             x, y = im.size
@@ -87,7 +87,7 @@ class Spider(object):
 
         cropped = img.crop((x1, y1, x2, y2))
         转换 = cropped.convert('RGB')
-        self._resize_image(BytesIO(转换), outfile=output_fullname)
+        self._resize_image(转换, outfile=output_fullname, is_file=False)
         # 转换.save(output_fullname)  # 保存
 
     @retry(stop_max_attempt_number=5, wait_fixed=2000)
