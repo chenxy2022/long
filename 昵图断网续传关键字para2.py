@@ -46,6 +46,7 @@ class Spider(object):
         :param infile: 图片源文件
         :param outfile: 输出文件名，如果为空，那么直接修改原图片
         :param maxsize: 最大长宽
+        :param is_file: 判断infile的类型，False，直接=
         :return:
         """
         im = Image.open(infile) if is_file else infile
@@ -301,7 +302,7 @@ if __name__ == '__main__':
         delay=0.7,  # 爬取间隔数，防止被服务器踢掉，每爬一张图片间隔时间，默认0.5秒。
     )
 
-    with open(para.get('keys_file'), 'r') as f:  # 获取关键字
+    with open(para.get('keys_file'), 'r', encoding='utf-8') as f:  # 获取关键字
         keys_list = f.readlines()
         keys_list = map(str.strip, keys_list)
     para_copy = para.copy()
