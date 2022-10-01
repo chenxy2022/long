@@ -1,7 +1,7 @@
-'''
+"""
 只要把目录名传入main就可以删除重复
 目录都是和第一个参数进行对比，除第一个文档外有重复的全部删除
-'''
+"""
 import os, time
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
