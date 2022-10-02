@@ -26,12 +26,12 @@ def delefiles(in_files):
         executor.map(os.remove, in_files)
 
 
-def main(*filedirs, del_not_in):
+def main(*filedirs, del_not_in=True):
     st = time.perf_counter()
     # 多线程读取文件名
     with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(get_files, filedir) for filedir in filedirs]
-    r = ([x.result() for x in futures])
+        file_lists = executor.map(get_files,filedirs)
+    r = list(file_lists)
 
     if del_not_in:
         # 不包含在第一个目录中的文件
@@ -46,7 +46,7 @@ def main(*filedirs, del_not_in):
                             for x in r[1:])
 
     all_deletes = pd.concat((del_files, dupli_files)).index.drop_duplicates()
-    # print(all_deletes, not_in_files, in_files)
+
     # 多线程删除
     delefiles(all_deletes)
 

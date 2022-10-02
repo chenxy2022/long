@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 from io import BytesIO
 from multiprocessing import Process, Manager
+import re
 
 import aiohttp
 import asyncio
@@ -57,6 +58,10 @@ class Spider(object):
             im = im.resize((x, y), 1)
         if not outfile:
             outfile = infile
+        # 如果路径不存在，那么就创建
+        ckpath=os.path.dirname(outfile)
+        if not os.path.exists(ckpath):
+            os.makedirs(ckpath)
         im.save(outfile)
 
     def _img_crop(self, input_fullname, output_fullname):
@@ -96,7 +101,6 @@ class Spider(object):
         async with aiohttp.ClientSession(headers=self.headers) as session:
             r = await session.get(url)
             el = etree.HTML(await r.text())
-            # print(url)
             if 'https://www.nipic.com/' in url:
 
                 # 判断图片类型
@@ -125,9 +129,10 @@ class Spider(object):
                     return 0
                 bhpath = '//*[@id = "J_detailMain"]/div[2]/div[1]/p[1]/span[1]/span/text()'
                 filebh = el.xpath(bhpath)[0]
-                file_fomat_ph='//*[@id="J_detailMain"]/div[2]/div[1]/p[2]/span[2]/span/text()'
-                file_fomat = el.xpath(file_fomat_ph)[0]
-                print(file_fomat)
+                file_format_ph = '//*[@id="J_detailMain"]/div[2]/div[1]/p[2]/span[2]/span/text()'
+                file_format = el.xpath(file_format_ph)[0]
+                file_format = re.sub(r'\(.*\)', '', file_format).strip()
+                # print(file_fomat)
                 # print(filebh)
             else:
                 # 判断图片类型
@@ -149,6 +154,12 @@ class Spider(object):
 
                 bhpath = '//*[@id="details"]/div[1]/div/div[2]/div/div[3]/label[1]/text()'
                 filebh = el.xpath(bhpath)
+                file_format_ph = '//*[@id="details"]/div[1]/div/div[2]/div//text()'
+                                # '//*[@id="details"]/div[1]/div/div[2]/div/div[3]'
+                file_format = el.xpath(file_format_ph)
+                file_format =file_format[[i for i,x in  enumerate(file_format) if '格式' in x][0]+1].strip()
+                file_format = re.sub(r'\(.*\)', '', file_format).strip()
+
                 if filebh:
                     filebh = filebh[0].split("：")[1]
                     ht = "汇图网编号"
@@ -160,6 +171,7 @@ class Spider(object):
             picsrc = 'https:' + picsrc
 
             filename = filebh + '.jpg'
+            filename = os.path.join(file_format, filename)
             response = await session.get(picsrc)  # 图片网址
             content = await response.read()
             if content and filename:
@@ -305,14 +317,14 @@ if __name__ == '__main__':
         delay=0.7,  # 爬取间隔数，防止被服务器踢掉，每爬一张图片间隔时间，默认0.5秒。
     )
 
-    with open(para.get('keys_file'), 'r',encoding='utf-8') as f:  # 获取关键字
+    with open(para.get('keys_file'), 'r', encoding='utf-8') as f:  # 获取关键字
         keys_list = f.readlines()
         keys_list = map(str.strip, keys_list)
     para_copy = para.copy()
     for num, q in enumerate(keys_list):  # 开始爬数据(修改参数为：查询内容，裁剪图和略缩图的路径）
         para_copy['q'] = q
-        para_copy['resize_path'] = os.path.join(para.get('resize_path', 'resize'), str(num + 1))
-        para_copy['crop_path'] = os.path.join(para.get('crop_path', 'crop'), str(num + 1))
+        # para_copy['resize_path'] = os.path.join(para.get('resize_path', 'resize'), str(num + 1))
+        # para_copy['crop_path'] = os.path.join(para.get('crop_path', 'crop'), str(num + 1))
         main(para_copy)
 
     print(f'总用时:{time.perf_counter() - _mystarttime:.0f}秒')
