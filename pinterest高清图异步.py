@@ -10,7 +10,7 @@ class Play_get_pic:
         self.picurl = 'https://i.pinimg.com/originals'  # 判断需要下载的图片网址链接
         self.num = 0
         self.sem = sem
-        self.url = 'https://www.pinterest.ca/search/pins/?q={}'
+        self.url_format = 'https://www.pinterest.ca/search/pins/?q={}'
         self.start_t = time.perf_counter()
         self.down_path = down_path
         self.show = show
@@ -60,8 +60,7 @@ class Play_get_pic:
             sem = asyncio.Semaphore(self.sem)
             for ehkey in keys_list:
                 self.q = ehkey
-                print(self.q)
-                self.url = self.url.format(ehkey)
+                self.url = self.url_format.format(ehkey)
                 self.next = False  # 重置中断标记
                 await self.geturls(browser, sem)
 
@@ -72,7 +71,7 @@ class Play_get_pic:
         num = 0
         allurls = []
         for i in range(999):  # 翻页的次数
-            if self.next: break  # 长时间没有数据，那么就退出循环
+            if self.next: return  # 长时间没有数据，那么就退出循环
             await page.wait_for_load_state('networkidle', )
             await page.wait_for_timeout(1000)
             suburls = await page.query_selector_all('//a[contains(@href,"/pin/")]')
@@ -94,7 +93,7 @@ class Play_get_pic:
                 await page.keyboard.press('PageDown')
 
     def dinshi(self, timev):
-        time.sleep(20)  # 启动时间设定为20秒
+        time.sleep(30)  # 启动时间设定为20秒
         while 1:
             old = self.num
             time.sleep(timev)
@@ -109,7 +108,7 @@ async def main(q, down_path):
     myclass = Play_get_pic(down_path)
     myclass.sem = 3  # 开几个窗口同时爬图片，我网络不行只能开3个
     myclass.show = False  # 是否显示浏览器
-    timev = 60 * 5  # 监测间隔时间(秒)，如果超过这个时间间隔没有下载数据，那么就下载下一个或者结束。
+    timev =  60 *5  # 监测间隔时间(秒)，如果超过这个时间间隔没有下载数据，那么就下载下一个或者结束。
     t = Process(target=myclass.dinshi, args=(timev,))
     t.daemon = True
     t.start()
