@@ -3,7 +3,7 @@
 上传开始日期：默认不判断日期，填写日期的格式为yyyy-mm-dd('2022-01-31')文本格式
 图片保存在这个文件所在的目录中'''
 import requests
-import re
+import re,time
 from lxml import etree
 
 
@@ -30,7 +30,8 @@ def getpic(url, headers, date):  # 模块下的图片
     picsrc = el.xpath('//*[@id="pic-main"]/@src')[0]
     picsrc = 'https:' + picsrc.replace('https:', '')
     filename = picsrc.split('/')[-1]
-    with open(r'C:\Users\Administrator\Desktop\新建文件夹 (16)\大牌'+filename, 'wb') as fp:
+    # with open(r'C:\Users\Administrator\Desktop\新建文件夹 (16)\大牌'+filename, 'wb') as fp:
+    with open(r'e:\download\\'+filename, 'wb') as fp:
         fp.write(requests.get(url=picsrc, headers=headers).content)
         print(filename)
         return 1
@@ -85,5 +86,6 @@ def searchpic(q, pages=1, date=False):
             piccount += getpic(urlsub, headers=headers, date=date)
     print('爬完了！！,一共爬取{}张图片'.format(piccount))
 
-
-searchpic('大牌', 1, '2021-01-02')  # 注意日期格式必须是yyyy-mm-dd的文本格式
+st=time.perf_counter()
+searchpic('大牌', 3, '2021-01-02')  # 注意日期格式必须是yyyy-mm-dd的文本格式
+print(time.perf_counter()-st)

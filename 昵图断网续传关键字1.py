@@ -317,7 +317,7 @@ if __name__ == '__main__':
         delay=0.7,  # 爬取间隔数，防止被服务器踢掉，每爬一张图片间隔时间，默认0.5秒。
     )
 
-    with open(para.get('keys_file'), 'r', encoding='utf-8') as f:  # 获取关键字
+    with open(para.get('keys_file'), 'r') as f:  # 获取关键字
         keys_list = f.readlines()
         keys_list = map(str.strip, keys_list)
     para_copy = para.copy()
