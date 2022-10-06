@@ -57,7 +57,7 @@ class Spider(object):
             async with session.get(url=link) as response:
                 r = await response.text()
             el = etree.HTML(r)
-            # print(url)
+            # print(link)
             # 判断是否jpg格式文档，如果是，那么就不下载
             pictypepath = '//div[@class="download-right-main mt20"]/div[2]/p/text()'
             pictype = el.xpath(pictypepath)[0]
@@ -76,7 +76,11 @@ class Spider(object):
 
             picsrc = el.xpath('//*[@id="pic-main"]/@src')[0]
             picsrc = 'https:' + picsrc.replace('https:', '')
+            bh_path='/html/body/div[8]/div[3]/div/div[2]/div[4]/div[1]/p/text()'
+            bh=el.xpath(bh_path)[0]
             filename = picsrc.split('/')[-1]
+            filename=f"{bh}.{filename.split('.')[-1]}"
+            
             async with session.get(url=picsrc) as response:
                 content = await response.read()
             await self._write_img(filename, content)
