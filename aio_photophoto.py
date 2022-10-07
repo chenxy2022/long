@@ -99,7 +99,7 @@ class Spider(object):
                 urls = ['https:' + x.replace('https:', '') for x in urls]
                 # print(urls)
                 getpictasks = [self._get_content(ehurl, session) for ehurl in urls]
-                await asyncio.gather(*getpictasks)
+                await asyncio.gather(*getpictasks,return_exceptions=True)
                 self.page += 1
 
         except Exception as e:
@@ -139,7 +139,7 @@ class Spider(object):
         pagetasks = [asyncio.create_task(self._get_img_links(page, session))
                      for page in urlpagelist]
         # print(urlpagelist)
-        imgurls = await asyncio.gather(*pagetasks)
+        imgurls = await asyncio.gather(*pagetasks,return_exceptions=True)
 
     async def paseurl(self, session):
         # 解析网址，并更新self.url_pase
@@ -182,7 +182,7 @@ class Spider(object):
                 n = 5  # 按照多少页进行一组，异步并发操作
                 gdf = se.groupby(se.index // n)
                 gtasks = [self._group_process(df.values, session) for _, df in gdf]
-                await asyncio.gather(*gtasks)
+                await asyncio.gather(*gtasks,return_exceptions=True)
 
         end = time.time()
         self.done = True
