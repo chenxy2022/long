@@ -1,16 +1,18 @@
-import os, re
-import chardet
+import os
+import re
 import time
-from lxml import etree
+from multiprocessing.dummy import Process
+from time import sleep
+
 import aiofiles
 import aiohttp
 import asyncio
+import chardet
 import pandas as pd
-from tqdm import tqdm
-from time import sleep
-from multiprocessing.dummy import Process
-# from queue import Queue
 from aiohttp import ClientPayloadError
+from lxml import etree
+from retrying import retry
+from tqdm import tqdm
 
 
 class Spider(object):
@@ -39,16 +41,16 @@ class Spider(object):
         self.page = 0
 
     async def file_to_keysrun(self, q, startpage, endpage, date):
-        self.date=date
+        self.date = date
         if ('.' in q):  # 如果是文件
             with open(q, 'rb', ) as f:  # 判断文本编码
-                code=chardet.detect(f.read())['encoding']
+                code = chardet.detect(f.read())['encoding']
             with open(q, 'r', encoding=code) as f:  # 获取关键字
                 keys_list = f.readlines()
                 keys_list = list(map(str.strip, keys_list))
         else:
             keys_list = [q]  # 如果不是文件也变成列表
-        print('关键字:',keys_list)
+        print('关键字:', keys_list)
         for ehq in keys_list:
             await self.run(ehq, startpage, endpage)
 
@@ -76,11 +78,11 @@ class Spider(object):
 
             picsrc = el.xpath('//*[@id="pic-main"]/@src')[0]
             picsrc = 'https:' + picsrc.replace('https:', '')
-            bh_path='/html/body/div[8]/div[3]/div/div[2]/div[4]/div[1]/p/text()'
-            bh=el.xpath(bh_path)[0]
+            bh_path = '/html/body/div[8]/div[3]/div/div[2]/div[4]/div[1]/p/text()'
+            bh = el.xpath(bh_path)[0]
             filename = picsrc.split('/')[-1]
-            filename=f"{bh}.{filename.split('.')[-1]}"
-            
+            filename = f"{bh}.{filename.split('.')[-1]}"
+
             async with session.get(url=picsrc) as response:
                 content = await response.read()
             await self._write_img(filename, content)
@@ -99,7 +101,7 @@ class Spider(object):
                 urls = ['https:' + x.replace('https:', '') for x in urls]
                 # print(urls)
                 getpictasks = [self._get_content(ehurl, session) for ehurl in urls]
-                await asyncio.gather(*getpictasks,return_exceptions=True)
+                await asyncio.gather(*getpictasks, return_exceptions=True)
                 self.page += 1
 
         except Exception as e:
@@ -139,7 +141,7 @@ class Spider(object):
         pagetasks = [asyncio.create_task(self._get_img_links(page, session))
                      for page in urlpagelist]
         # print(urlpagelist)
-        imgurls = await asyncio.gather(*pagetasks,return_exceptions=True)
+        await asyncio.gather(*pagetasks, return_exceptions=True)
 
     async def paseurl(self, session):
         # 解析网址，并更新self.url_pase
@@ -147,6 +149,7 @@ class Spider(object):
             d = await respone.json()
             self.url_pase = f'https://www.photophoto.cn/all/{d["pinyin"]}.html'
 
+    @retry(stop_max_attempt_number=5, wait_fixed=3000)  # 如果出错3秒后重试，最多重试5次
     async def run(self, q, startpage=1, endpage=1):
         """
         q:要查询的内容
@@ -182,7 +185,7 @@ class Spider(object):
                 n = 5  # 按照多少页进行一组，异步并发操作
                 gdf = se.groupby(se.index // n)
                 gtasks = [self._group_process(df.values, session) for _, df in gdf]
-                await asyncio.gather(*gtasks,return_exceptions=True)
+                await asyncio.gather(*gtasks, return_exceptions=True)
 
         end = time.time()
         self.done = True
@@ -204,13 +207,13 @@ class Spider(object):
 
 
 def main():
-    down_path = r'E:\Download'
-    q = '大牌' # 这里智能判断，如果含有点，那么就按照文件来每行读取，否则就按照单个名称爬取
+    down_path = r'D:\Download'
+    q = '大牌'  # 这里智能判断，如果含有点，那么就按照文件来每行读取，否则就按照单个名称爬取
     startpage = 1
-    endpage = 10  # 如果填写0，那么全部都下载
+    endpage = 0  # 如果填写0，那么全部都下载
     spider = Spider(down_path)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(spider.file_to_keysrun(q, startpage, endpage,'2021-01-02'))
+    loop.run_until_complete(spider.file_to_keysrun(q, startpage, endpage, '2021-01-02'))
 
 
 if __name__ == '__main__':
