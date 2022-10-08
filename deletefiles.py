@@ -20,8 +20,8 @@ def get_files(filepath):
 
 
 if __name__ == '__main__':
+    filepath = r'e:\download' # 删除这个目录和子目录下所有文件
     st = time.perf_counter()
-    filepath = r'e:\download'
     se = get_files(filepath)
     delefiles(se.index)
     print(f'删除文件：{len(se.index)}', f'用时：{time.perf_counter() - st:.2f}秒')
