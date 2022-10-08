@@ -40,7 +40,7 @@ class Spider(object):
         self.date = date
         self.page = 0
 
-    async def file_to_keysrun(self, q, startpage, endpage, date):
+    async def file_to_keysrun(self, q, startpage, endpage, date=False):
         self.date = date
         if ('.' in q):  # 如果是文件
             with open(q, 'rb', ) as f:  # 判断文本编码
@@ -149,7 +149,7 @@ class Spider(object):
             d = await respone.json()
             self.url_pase = f'https://www.photophoto.cn/all/{d["pinyin"]}.html'
 
-    @retry(stop_max_attempt_number=5, wait_fixed=3000)  # 如果出错3秒后重试，最多重试5次
+    @retry(stop_max_attempt_number=5, wait_fixed=10000)  # 如果出错10秒后重试，最多重试5次
     async def run(self, q, startpage=1, endpage=1):
         """
         q:要查询的内容
@@ -207,14 +207,17 @@ class Spider(object):
 
 
 def main():
-    down_path = r'D:\Download'
-    q = '大牌'  # 这里智能判断，如果含有点，那么就按照文件来每行读取，否则就按照单个名称爬取
+
+    down_path = r'E:\Download'
+    q = '关键词.txt'  # 这里智能判断，如果含有点，那么就按照文件来每行读取，否则就按照单个名称爬取
     startpage = 1
     endpage = 0  # 如果填写0，那么全部都下载
     spider = Spider(down_path)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(spider.file_to_keysrun(q, startpage, endpage, '2021-01-02'))
+    loop.run_until_complete(spider.file_to_keysrun(q, startpage, endpage, ))
 
 
 if __name__ == '__main__':
+    start_time=time.perf_counter()
     main()
+    print(f'总用时：{time.perf_counter()-start_time}')
