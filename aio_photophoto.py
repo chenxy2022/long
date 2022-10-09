@@ -116,7 +116,7 @@ class Spider(object):
         self.num += 1
 
     async def _get_total_page(self, session):
-        async with session.get(url=self.url_pase, params=self.params) as respone:
+        async with session.get(url=self.url_parse, params=self.params) as respone:
             r = await respone.text()
 
             apages = re.search(r'<input type="number" id="paging-mini-current".*data-count ="(\d+)"', r)
@@ -131,10 +131,10 @@ class Spider(object):
         if self.addstr:
             addstr = re.search(r'(?:\-\d+){7}\-', self.addstr).group()
             urlpagelist = [
-                f'{".".join(self.url_pase.split(".")[:-1])}{addstr}{page}.html' for page in
+                f'{".".join(self.url_parse.split(".")[:-1])}{addstr}{page}.html' for page in
                 range(startpage, int(endpage) + 1)]
         else:
-            urlpagelist = [self.url_pase]
+            urlpagelist = [self.url_parse]
         self.urlpagelist = urlpagelist
 
     async def _group_process(self, urlpagelist, session):
@@ -143,11 +143,11 @@ class Spider(object):
         # print(urlpagelist)
         await asyncio.gather(*pagetasks, return_exceptions=True)
 
-    async def paseurl(self, session):
-        # 解析网址，并更新self.url_pase
+    async def parseurl(self, session):
+        # 解析网址，并更新self.url_parse
         async with session.get(url=self.url, params=self.params) as respone:
             d = await respone.json()
-            self.url_pase = f'https://www.photophoto.cn/all/{d["pinyin"]}.html'
+            self.url_parse = f'https://www.photophoto.cn/all/{d["pinyin"]}.html'
 
     @retry(stop_max_attempt_number=5, wait_fixed=10000)  # 如果出错10秒后重试，最多重试5次
     async def run(self, q, startpage=1, endpage=1):
@@ -164,7 +164,7 @@ class Spider(object):
 
         async with aiohttp.TCPConnector(limit=self.limit) as conn:  # 限制tcp连接数
             async with aiohttp.ClientSession(connector=conn, headers=self.headers) as session:
-                await self.paseurl(session)  # 解析网址
+                await self.parseurl(session)  # 解析网址
                 await self._get_total_page(session)  # 获得总页数
                 if self.total_page == 0:
                     print('无数据')
