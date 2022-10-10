@@ -33,14 +33,9 @@ class Spider(object):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36',
         }
         self.token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2NjYzN180XzAiLCJNSUlCVXdJQkFEQU5CZ2txaGtpRzl3MEJBUUVGQUFTQ0FUMHdnZ0U1QWdFQUFrRUEwdmZ2eVRkR0prZGJIa0I4bXAwZjNGRTBHWVAzQVlQYUpGN2pVZDFNMFh4RlNFMmNlSzNrMiI6IjljZGQwNSIsImV4cCI6MTY2NTkwNjExMSwiaWF0IjoxNjY1MzAxMzExfQ.2q4VpP7PrH4OXAIBkdYwiGOX-Re9tW9G_rJdUGqRd_PXeENC-4yOTU_e9Bwi5Xg8bkXLxVfpa60jgl-hhJNgIQ'
-        self.json = {
-            "orderBy": "random",
-            "isHot": 0,
-            "sort": "gmtShowHome",
-            "start": 0,
-            "limit": 30,
-            "isTop": 'false',
-        }
+        self.json = {'orderBy': "random", 'isHot': 0, 'sort': "gmtShowHome", 'start': 0, 'isTop': 'false',
+                     'limit': 10000,
+                     }
         self.num = 0
         if down_path == "":
             if 'downpic' not in os.listdir('.'):  # 当前目录下的downpic目录
@@ -56,8 +51,6 @@ class Spider(object):
         self.date = date
         self.page = 0
         self.headers['token'] = self.token
-
-
 
     async def _get_content(self, link, session):  # 传入的是图片连接
         try:
@@ -142,6 +135,7 @@ def main():
     down_path = r'E:\Download'
     startpage = 1
     spider = Spider(down_path)
+    # spider.token='' # 如果登陆过期了，这里更新
     loop = asyncio.get_event_loop()
     loop.run_until_complete(spider.run(startpage, ))
 
