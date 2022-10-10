@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from time import sleep
@@ -147,8 +148,8 @@ class Spider(object):
 def main():
     down_path = r'D:\Download'
     startpage = 1
-    userdata = {"username": "18026395657",
-                "password": "1120005756", }  # 用户名密码
+    with open('user.json', 'r', encoding='utf-8') as fp:  # 用户名密码，直接写程序不安全，从json文件中读取
+        userdata = json.load(fp)
     spider = Spider(userdata, down_path, )
     loop = asyncio.get_event_loop()
     loop.run_until_complete(spider.run(startpage))
