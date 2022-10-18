@@ -133,8 +133,14 @@ class Spider(object):
                 file_format = el.xpath(file_format_ph)[0]
                 file_format = re.sub(r'\(.*\)', '', file_format).strip()
                 # print(file_fomat)
+                # 判断是否存在共享分
+                shareph = '//*[@id="J_detailMain"]/div[2]/div[2]/span/b/text/text()'
+                if (share:=el.xpath(shareph)):
+                    filebh = f'昵图{share[0]}共享分编号{filebh}'
+                elif (mh := re.search(r'var price = \((\d+)\).toString\(\);', await r.text())):
+                    filebh = f'昵图{mh.group(1)}元编号{filebh}'
                 # print(filebh)
-            else:
+            else:  # 汇图网
                 # 判断图片类型
 
                 pictypepath = '//*[@id = "details"]/div[1]/div/div[2]/div//span/@title'
@@ -163,6 +169,8 @@ class Spider(object):
                 if filebh:
                     filebh = filebh[0].split("：")[1]
                     ht = "汇图网编号"
+                    if (mh := re.search(r'"OriginalPrice":(\d+)\.\d\d', await r.text())): # Price 是折扣后价格
+                        ht = f'汇图网{mh.group(1)}元编号'
                     filebh = ht + filebh
 
                 else:
@@ -317,7 +325,7 @@ if __name__ == '__main__':
         delay=0.7,  # 爬取间隔数，防止被服务器踢掉，每爬一张图片间隔时间，默认0.5秒。
     )
 
-    with open(para.get('keys_file'), ) as f:  # 获取关键字
+    with open(para.get('keys_file'), ) as f:  # 获取关键字 encoding='utf-8'
         keys_list = f.readlines()
         keys_list = map(str.strip, keys_list)
     para_copy = para.copy()
