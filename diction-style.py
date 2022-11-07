@@ -1,18 +1,24 @@
-import time
+import time,os
 
 import aiohttp
 import asyncio
+
 from playwright.async_api import Playwright, async_playwright
 
 
 async def down_img(urls, session):
     global i
-    async with session.get(url=urls) as respone:
-        r = await respone.read()
-        filename = urls.split('_-_-')[-1]
-        with open(fr'd:\download\{filename}.jpg', 'wb') as f:
-            f.write(r)
-        i += 1
+    try:
+        async with session.get(url=urls) as respone:
+            r = await respone.read()
+            filename = urls.split('_-_-')[-1]
+            downpath=r'd:\download' # 下载的路径
+            filename= os.path.join(downpath,filename)
+            with open(filename, 'wb') as f:
+                f.write(r)
+            i += 1
+    except Exception:
+        pass
 
 
 async def run(playwright: Playwright, start_page, end_page) -> None:
