@@ -1,3 +1,4 @@
+import os
 import time
 
 import aiohttp
@@ -10,12 +11,14 @@ async def down_img(urls, session):
     async with session.get(url=urls) as respone:
         r = await respone.read()
         filename = urls.split('_-_-')[-1]
-        with open(fr'd:\download\{filename}.jpg', 'wb') as f:
+        downpath = r'd:\download'  # 下载存放的路径
+        filename = os.path.join(downpath, filename)
+        with open(filename, 'wb') as f:
             f.write(r)
         i += 1
 
 
-async def run(playwright: Playwright, start_page, end_page) -> None:
+async def run(playwright: Playwright, start_page, end_page):
     browser = await playwright.chromium.launch(headless=True)
     context = await browser.new_context()
     # Open new page
