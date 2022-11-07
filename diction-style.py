@@ -48,7 +48,7 @@ async def run(playwright: Playwright, start_page, end_page) -> None:
         # await page.close()
         imgurls.extend(imglinks)
         tasks = [down_img(links, session) for links in imglinks]
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks,return_exceptions=True)
 
     async with aiohttp.ClientSession() as session:
         # pagetasks=[]
