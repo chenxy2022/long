@@ -1,24 +1,27 @@
-import os
-import time
+import time,os
 
 import aiohttp
 import asyncio
+
 from playwright.async_api import Playwright, async_playwright
 
 
 async def down_img(urls, session):
     global i
-    async with session.get(url=urls) as respone:
-        r = await respone.read()
-        filename = urls.split('_-_-')[-1]
-        downpath = r'd:\download'  # 下载存放的路径
-        filename = os.path.join(downpath, filename)
-        with open(filename, 'wb') as f:
-            f.write(r)
-        i += 1
+    try:
+        async with session.get(url=urls) as respone:
+            r = await respone.read()
+            filename = urls.split('_-_-')[-1]
+            downpath=r'd:\download' # 下载的路径
+            filename= os.path.join(downpath,filename)
+            with open(filename, 'wb') as f:
+                f.write(r)
+            i += 1
+    except Exception:
+        pass
 
 
-async def run(playwright: Playwright, start_page, end_page):
+async def run(playwright: Playwright, start_page, end_page) -> None:
     browser = await playwright.chromium.launch(headless=True)
     context = await browser.new_context()
     # Open new page
@@ -45,7 +48,7 @@ async def run(playwright: Playwright, start_page, end_page):
         # await page.close()
         imgurls.extend(imglinks)
         tasks = [down_img(links, session) for links in imglinks]
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks,return_exceptions=True)
 
     async with aiohttp.ClientSession() as session:
         # pagetasks=[]
