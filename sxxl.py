@@ -37,12 +37,25 @@ class Spider(object):
             os.chdir(self.path)  # 进入文件下载路径
 
         self.down_path = down_path
-        self.urls = '''https://www.sxxl.com/BigPatter-index-cid-6-channel-2085.html
-                    https://www.sxxl.com/VectorGallery-index-cid-6-channel-2085-sex-32940.html
-                    https://www.sxxl.com/PatternGallery-index-cid-6-channel-2085.html
-                    https://www.sxxl.com/PatternBook-index-cid-6-channel-2085.html
-                    https://www.sxxl.com/CowboyAccessories-index-cid-6-channel-2085.html'''.split()
-        self.url = self.urls[0]
+
+        self.urls = {
+            'https://www.sxxl.com/BigPatter-index-cid-6-channel-2085.html': '女装_大牌图案',
+            'https://www.sxxl.com/VectorGallery-index-cid-6-channel-2085-sex-32940.html': '女装_矢量图库',
+            'https://www.sxxl.com/PatternGallery-index-cid-6-channel-2085.html': '女装_图案图库',
+            'https://www.sxxl.com/PatternBook-index-cid-6-channel-2085.html': '女装_图案书刊',
+            'https://www.sxxl.com/CowboyAccessories-index-cid-6-channel-2085.html': '女装_牛仔辅料',
+            'https://www.sxxl.com/BigPatter-index-cid-6-channel-2084.html': '男装_大牌图案',
+            'https://www.sxxl.com/VectorGallery-index-cid-6-channel-2084-sex-32939.html': '男装_矢量图库',
+            'https://www.sxxl.com/PatternGallery-index-cid-6-channel-2084.html': '男装_图案图库',
+            'https://www.sxxl.com/PatternBook-index-cid-6-channel-2084.html': '男装_图案书刊',
+            'https://www.sxxl.com/CowboyAccessories-index-cid-6-channel-2084.html': '男装_牛仔辅料',
+            'https://www.sxxl.com/BigPatter-index-cid-6-channel-2086.html': '童装_大牌图案',
+            'https://www.sxxl.com/VectorGallery-index-cid-6-channel-2086-sex-109697.html': '童装_矢量图库',
+            'https://www.sxxl.com/PatternGallery-index-cid-6-channel-2086.html': '童装_图案图库',
+            'https://www.sxxl.com/PatternBook-index-cid-6-channel-2086.html': '童装_图案书刊',
+        }
+
+        self.url = [*self.urls][0]
         self.limit = 10  # tcp连接数
         self.page = 0
         self.sleep = 2  # 每页抓取间隔时间
@@ -63,17 +76,20 @@ class Spider(object):
             return cookie
 
     async def run(self, startpage, endpage):
+        org_endpage = endpage
         async with aiohttp.TCPConnector(limit=self.limit) as conn:  # 限制tcp连接数
             async with aiohttp.ClientSession(connector=conn, headers=self.headers, ) as session:
-                for eh_url in self.urls:  # 对每个网址进行爬取
+                for eh_url, pictype in self.urls.items():  # 对每个网址进行爬取
                     self.url = eh_url
-                    if endpage == 0:  # 如果是0那么全爬取
+                    self.page = 0
+                    if org_endpage == 0:  # 如果是0那么全爬取
                         async with session.get(f'{self.url}?&p=1') as respone:
                             r = await respone.text()
                             el = etree.HTML(r)
                             totalpagep = '//*[@id="page"]/div/a[@class="page-item"]'
                             totalpage = el.xpath(totalpagep)[-1].xpath('./text()')[0]
                             endpage = int(totalpage)
+                            print(f'总页数：{endpage}页  类型:{pictype} 网址：{self.url}')
 
                     for pagen in range(startpage, endpage + 1):
                         async with session.get(f'{self.url}?&p={pagen}') as respone:
@@ -84,7 +100,7 @@ class Spider(object):
                             tasks = [self._get_content(ehurl) for ehurl in urls]
                             await asyncio.gather(*tasks, return_exceptions=True)
                             self.page += 1
-                            print(f'已下载第{self.page}页')
+                            print(f'已下载第{self.page}页。 类型:{pictype} ')
         print(f'共下载{self.num}张图片')
 
     async def _get_content(self, link, ):  # 传入的是图片连接
@@ -115,4 +131,4 @@ if __name__ == '__main__':
     # print(spider.urls)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(spider.run(startpage, endpage, ))
-    print(f'总用时：{time.perf_counter() - start_time}')
+    print(f'总用时：{time.perf_counter() - start_time:.0f}秒')
