@@ -76,6 +76,15 @@ class Spider(object):
             return cookie
 
     async def run(self, startpage, endpage):
+        async def dapaiurl(suburl, session, pictype):
+            '''大牌图案专用函数，返回里面的图片链接'''
+            async with session.get(suburl) as respone:
+                res = await respone.text()
+                el = etree.HTML(res)
+                p = '//*[@id="list-wrap"]/ul/li/img/@src'
+                position = 0 if '童装' in pictype else -1
+                return el.xpath(p)[position]
+
         org_endpage = endpage
         async with aiohttp.TCPConnector(limit=self.limit) as conn:  # 限制tcp连接数
             async with aiohttp.ClientSession(connector=conn, headers=self.headers, ) as session:
@@ -95,9 +104,16 @@ class Spider(object):
                         async with session.get(f'{self.url}?&p={pagen}') as respone:
                             r = await respone.text()
                             el = etree.HTML(r)
-                            xpath = '//*[@id="js-list"]/li/div/div[1]/a/img/@src'
-                            xpath = xpath + ' | ' + '//*[@id="ul-wrap-list"]/li/div/div[1]/div/a[3]/img/@src'
-                            urls = (el.xpath(xpath))
+                            if '大牌图案' in pictype:
+                                xpath = '//*[@id="js-list"]/li/div/div[1]/a/@href'
+                                suburls = (el.xpath(xpath))
+                                subtasks = [dapaiurl(x, session, pictype) for x in suburls]
+                                urls = await asyncio.gather(*subtasks, return_exceptions=True)
+                            else:
+                                xpath = '//*[@id="js-list"]/li/div/div[1]/a/img/@src'
+                                xpath = xpath + ' | ' + '//*[@id="ul-wrap-list"]/li/div/div[1]/div/a[3]/img/@src'
+                                urls = el.xpath(xpath)
+
                             tasks = [self._get_content(ehurl) for ehurl in urls]
                             await asyncio.gather(*tasks, return_exceptions=True)
                             self.page += 1
