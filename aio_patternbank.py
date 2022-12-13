@@ -39,7 +39,6 @@ class Spider(object):
                        'per_page': '100', }
         self.limit = 35  # tcp连接数
         self.done = False
-        self.date = date
         self.page = 0
         self.sub_path = {'-preview-small': '小图',
                          '-preview-large': '大图',
@@ -155,10 +154,9 @@ class Spider(object):
                 se = pd.Series(list(range(startpage, endpage + 1)))
                 n = 5  # 按照多少页进行一组，异步并发操作
                 gdf = se.groupby(se.index // n)
+                for _, df in gdf:
+                    await self._group_process(df.values, session)
 
-                gtasks = [self._group_process(df.values, session) for _, df in gdf]
-                await asyncio.gather(*gtasks, return_exceptions=True)
-                # await self._get_img_links(1, session)
 
         end = time.time()
         self.done = True
@@ -170,7 +168,7 @@ class Spider(object):
         bar.clear()
         while 1:
             sleep(.1)
-            bar.set_description(f'下载第{self.page}页成功')
+            bar.set_description(f'下载第{self.page}页，{self.num}张成功')
             bar.update(self.page - bar.last_print_n)
             if self.done:
                 bar.clear()
@@ -182,7 +180,7 @@ class Spider(object):
 def main():
     down_path = r'D:\Download'
     startpage = 1
-    endpage = 10  # 如果填写0，那么全部都下载
+    endpage = 0  # 如果填写0，那么全部都下载
     spider = Spider(down_path)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(spider.run(startpage, endpage, ))
