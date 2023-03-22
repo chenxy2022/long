@@ -207,9 +207,8 @@ class Spider(object):
 
 
 def main():
-
-    down_path = r'E:\Download'
-    q = '关键词.txt'  # 这里智能判断，如果含有点，那么就按照文件来每行读取，否则就按照单个名称爬取
+    down_path = r'D:\Download'
+    q = '苹果'  # 这里智能判断，如果含有点，那么就按照文件来每行读取，否则就按照单个名称爬取
     startpage = 1
     endpage = 0  # 如果填写0，那么全部都下载
     spider = Spider(down_path)

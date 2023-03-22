@@ -48,19 +48,38 @@ class Spider(object):
                 os.mkdir(filepath)
         self.regex = re.compile('|'.join(self.sub_path.keys()))
 
+    def writecsv(self, filename, colname, value):
+        if not os.path.exists(filename):
+            with open(filename, 'w') as f:
+                f.write(colname + '\n')
+        with open(filename, 'a') as f:
+            f.write(value + '\n')
+
     async def _get_content(self, link, session):  # 传入的是图片网页(处理单个图片)
 
         try:
             async with session.get(url=link) as response:
                 r = await response.text()
             el = etree.HTML(r)
-            el = etree.HTML(r)
             if el is not None:
+                # # 将编号对应网址写入csv
+                #
+                bh = re.search(r'https://patternbank.com/([^/]+/designs/\d+)-', link).group(1).replace('/designs/', '-')
+                # self.writecsv(os.path.join(self.down_path, '编号对应网址.csv'), '编号,网址',
+                #               f"{bh},{link}")
+
                 regex = 'https://[^"]+/uploads/uploaded_files/attachments/[\d/]+original[^"]+-preview-(?:large|cropped_large)\.jpg'
                 plist = (re.findall(regex, r))
                 if plist:
                     async with aiohttp.ClientSession(headers=self.headers) as session:
-                        tasks = [self.downloadone(picsrc, picsrc.split('/')[-1], session) for picsrc in set(plist)]
+                        tasks = []
+                        for picsrc in set(plist):
+                            bh_name = bh + picsrc.split('/')[-1].lstrip('0123456789')
+                            tasks.append(self.downloadone(picsrc, bh_name, session))
+
+                        # tasks = [self.downloadone(picsrc,
+                        #                           re.search(r'/(\d+)-', link).group(1) + picsrc.split('/')[-1].lstrip(
+                        #                               '0123456789'), session) for picsrc in set(plist)]
                         await asyncio.gather(*tasks, return_exceptions=True)
 
         except (asyncio.TimeoutError, ClientPayloadError):
@@ -88,7 +107,8 @@ class Spider(object):
                 picurls = el.xpath(smallpath)  # 直接获取小图
                 picurls = [x.split('?')[0] for x in picurls]
                 async with aiohttp.ClientSession(headers=self.headers) as session1:
-                    dirctdowns = [self.downloadone(url, url.split('/')[-1], session1) for url in picurls]
+                    dirctdowns = [
+                        self.downloadone(url, url.split('/')[-1], session1) for url in picurls]
                     await asyncio.gather(*dirctdowns, return_exceptions=True)
 
                 await asyncio.gather(*getpictasks, return_exceptions=True)
@@ -99,7 +119,9 @@ class Spider(object):
 
     async def _write_img(self, file_name, content):
         subpath = self.sub_path[self.regex.search(file_name).group()]
-        file_name = os.path.join(self.down_path, subpath, file_name)
+        # bh_name = file_name.split('-')[0] + '.' + file_name.split('.')[-1]
+        bh_name = self.regex.sub('', file_name, 0)
+        file_name = os.path.join(self.down_path, subpath, bh_name)
         async with aiofiles.open(file_name, 'wb') as f:
             await f.write(content)
         # print('下载第%s张图片成功' % self.num)
@@ -157,7 +179,6 @@ class Spider(object):
                 for _, df in gdf:
                     await self._group_process(df.values, session)
 
-
         end = time.time()
         self.done = True
         t.join()
@@ -180,7 +201,7 @@ class Spider(object):
 def main():
     down_path = r'D:\Download'
     startpage = 1
-    endpage = 0  # 如果填写0，那么全部都下载
+    endpage = 1  # 如果填写0，那么全部都下载
     spider = Spider(down_path)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(spider.run(startpage, endpage, ))

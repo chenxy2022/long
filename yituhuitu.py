@@ -4,6 +4,7 @@ import time
 import aiofiles
 import aiohttp
 import asyncio
+from retrying import retry
 
 
 class Spider(object):
@@ -47,6 +48,7 @@ class Spider(object):
             cookie = ';'.join([f'{eh["name"]}={eh["value"]}' for eh in cookie])
             return cookie
 
+    @retry(stop_max_attempt_number=5, wait_fixed=10000)  # 如果出错10秒后重试，最多重试5次
     async def run(self, startpage, endpage):
         async with aiohttp.TCPConnector(limit=self.limit) as conn:  # 限制tcp连接数
             async with aiohttp.ClientSession(connector=conn, headers=self.headers, ) as session:
