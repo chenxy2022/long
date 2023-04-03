@@ -2,10 +2,11 @@ import math
 import os
 import re
 import time
+from io import BytesIO
 
-import aiofiles
 import aiohttp
 import asyncio
+from PIL import Image
 from lxml import etree
 
 
@@ -28,6 +29,9 @@ class Spider(object):
             os.chdir(self.path)  # 进入文件下载路径
 
         self.down_path = down_path
+        self.resize_path = os.path.join(self.down_path, '略缩图')
+        self.crop_path = os.path.join(self.down_path, '裁剪图')
+
         self.url = 'https://soso.huitu.com/?kw={}&page={}'
         self.limit = 10  # tcp连接数
         self.page = 0
@@ -52,7 +56,7 @@ class Spider(object):
             r = await respone.text()
             el = etree.HTML(r)
             path = '//strong[@id="searchedTotalNum"]/text()'
-            totalpic = el.xpath(path)[0]
+            totalpic = el.xpath(path)[0].replace(',', '')
             totalpage = math.ceil(int(totalpic) / 100)
             print(f'总页数:{totalpage},总张数:{totalpic}')
             return totalpage
@@ -128,13 +132,76 @@ class Spider(object):
             except (asyncio.TimeoutError, ClientPayloadError):
                 pass
 
-    async def _write_img(self, file_name, content):
-        file_name = os.path.join(self.down_path, file_name)
+    async def _write_img(self, short_name, content):
+        file_name_resize = os.path.join(self.resize_path, short_name)
+        file_name_crop = os.path.join(self.crop_path, short_name)
+        file_name_crop = os.path.join(os.path.split(file_name_crop)[0], "#" + os.path.split(file_name_crop)[1])
+
+        self._resize_image(BytesIO(content), outfile=file_name_resize)
+        self._img_crop(BytesIO(content), output_fullname=file_name_crop)
         # file_name += '.jpg'
-        async with aiofiles.open(file_name, 'wb') as f:
-            await f.write(content)
-            # print('下载第%s张图片成功' % self.num)
-            self.num += 1
+        # async with aiofiles.open(file_name, 'wb') as f:
+        #     await f.write(content)
+        #     # print('下载第%s张图片成功' % self.num)
+        self.num += 1
+
+    def _resize_image(self, infile, outfile='', minsize=195, is_file=True):  # 把图片像素改成308
+        """修改图片尺寸
+        :param infile: 图片源文件
+        :param outfile: 输出文件名，如果为空，那么直接修改原图片
+        :param minsize: min长宽
+        :return:
+        """
+        im = Image.open(infile) if is_file else infile
+        if min(im.size) > minsize:
+            x, y = im.size
+            if x < y:
+                y = int(y * minsize / x)
+                x = minsize
+            else:
+                x = int(x * minsize / y)
+                y = minsize
+            im = im.resize((x, y), 1)
+        if not outfile:
+            outfile = infile
+        # 如果路径不存在，那么就创建
+        ckpath = os.path.dirname(outfile)
+        if not os.path.exists(ckpath):
+            os.makedirs(ckpath)
+        im.save(outfile)
+
+    def _img_crop(self, input_fullname, output_fullname):
+
+        img = Image.open(input_fullname)
+        图片大小 = img.size
+        比率 = 图片大小[0] / 图片大小[1]
+        图片宽 = 图片大小[0]
+        图片高 = 图片大小[1]
+        矩形边长 = (((图片宽 / 2) + (图片高 / 2)) * 2) / 4
+
+        # 横形图片矩形高=图片高*0.8v
+        x1 = x2 = y1 = y2 = 0
+        if 0.7 <= 比率 <= 1.4:
+            x1 = 图片宽 * 0.1
+            y1 = 图片高 - (矩形边长 + 图片高 * 0.1)
+            x2 = x1 + 矩形边长
+            y2 = 图片高 - (图片高 * 0.1)
+        elif 比率 < 0.7:  # 竖的
+            x1 = 图片宽 * 0.05
+            y1 = 图片高 - (矩形边长 + 图片高 * 0.02)
+            x2 = x1 + 矩形边长
+            y2 = 图片高 - (图片高 * 0.02)
+        elif 比率 > 1.4:  # 横的
+            x1 = 图片宽 * 0.02
+            y1 = 图片高 * 0.02
+            x2 = x1 + 矩形边长
+            y2 = y1 + 矩形边长
+
+        cropped = img.crop((x1, y1, x2, y2))
+
+        转换 = cropped.convert('RGB')
+        self._resize_image(转换, outfile=output_fullname, is_file=False)
+        # 转换.save(output_fullname)  # 保存
 
 
 if __name__ == '__main__':
@@ -144,7 +211,7 @@ if __name__ == '__main__':
     # down_path = r'T:\汇图网'
     down_path = r'd:\download'
     startpage = 1
-    endpage = 0
+    endpage = 1
     spider = Spider(down_path)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(spider.filerun(startpage, endpage, q))
