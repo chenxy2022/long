@@ -6,22 +6,22 @@
 需要安装 pip install retrying
 """
 import json
+import math
 import os
 import re
 import time
 from datetime import datetime
 from io import BytesIO
-import math
 from multiprocessing import Process, Manager
 
 import aiohttp
 import asyncio
 import chardet
+import pandas as pd
 import requests
 from PIL import Image
 from lxml import etree
 from retrying import retry
-import pandas as pd
 
 
 class Spider(object):
@@ -76,13 +76,13 @@ class Spider(object):
                 x = int(x * minsize / y)
                 y = minsize
             im = im.resize((x, y), 1)
-            if not outfile:
-                outfile = infile
-            # 如果路径不存在，那么就创建
-            ckpath = os.path.dirname(outfile)
-            if not os.path.exists(ckpath):
-                os.makedirs(ckpath)
-            im.save(outfile)
+        if not outfile:
+            outfile = infile
+        # 如果路径不存在，那么就创建
+        ckpath = os.path.dirname(outfile)
+        if not os.path.exists(ckpath):
+            os.makedirs(ckpath)
+        im.save(outfile)
 
     def _img_crop(self, input_fullname, output_fullname):
         img = Image.open(input_fullname)
@@ -128,7 +128,7 @@ class Spider(object):
                 pictypepath = '//*[@id="J_detailMain"]/div[2]/div[1]/p[2]/span[2]/span/text()'
                 try:
                     pictype = el.xpath(pictypepath)[0].strip()
-                except Exception:
+                except Exception as e:
                     pictype = ''
 
                 # if 'JPG' in pictype.upper():
