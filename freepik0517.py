@@ -33,7 +33,7 @@ class Spider(object):
 
         self.down_path = down_path
         self.url = 'https://www.freepik.com/search?format=search&page={}&query={}'
-        self.limit = 10  # tcp连接数
+        self.limit = 25  # tcp连接数
         self.page = 0
         self.sleep = 2  # 每页抓取间隔时间
         self.CONCURRENCY = 20  # 同时下载图片的个数
@@ -41,9 +41,9 @@ class Spider(object):
 
     async def run(self, startpage, endpage, q):
         print(f'开始下载:"{q}"')
-        async with aiohttp.TCPConnector(limit=self.limit, ssl=False) as conn:  # 限制tcp连接数
+        async with aiohttp.TCPConnector(limit=self.limit, ssl=False, ) as conn:  # 限制tcp连接数
 
-            async with aiohttp.ClientSession(connector=conn, headers=self.headers, ) as session:
+            async with aiohttp.ClientSession(connector=conn, headers=self.headers, trust_env=True) as session:
                 if endpage == 0:
                     endpage = await self._get_img_links(1, q, session, get_totalpage=True)
                     if endpage is None:
@@ -80,8 +80,9 @@ class Spider(object):
             pic_path = '//*[@id="main"]/div/header/div/div[1]/div/img/@srcset'
             turls = el.xpath(pic_path)[0]
             pic_url = turls.split(',')[-1].split()[0]  # 图片网址(最大的图)
+            urltoname=url.split('/')[-1].split('.')[-2]
 
-            await self._get_content(pic_url, )
+            await self._get_content(pic_url,price=urltoname )
 
     async def _get_img_links(self, page, q, session, get_totalpage=False):  # 获取图片连接
         url = self.url.format(page, q)
@@ -106,7 +107,7 @@ class Spider(object):
 
                 getpictasks_large = [self.get_sub_img_links(ehurl, semaphore, session) for ehurl in page_urls]
                 await asyncio.gather(*getpictasks_large, return_exceptions=True)
-                # await asyncio.gather(*getpictasks_large, return_exceptions=True)
+
                 self.page += 1
                 print(f'下载成功{self.page}页')
 
@@ -123,7 +124,7 @@ class Spider(object):
                 filename = link.split('/')[-1].split('?')[0]
 
                 if price:
-                    filename = f'{price}元{filename}'
+                    filename = f'{price}.{filename.split(".")[-1]}'
 
                 await self._write_img(filename, content)
             except (asyncio.TimeoutError, ClientPayloadError):
@@ -135,7 +136,7 @@ class Spider(object):
             ckpath = os.path.dirname(file_name_origin)
             if not os.path.exists(ckpath):
                 os.makedirs(ckpath)
-            with open(file_name_origin,'wb') as f:
+            with open(file_name_origin, 'wb') as f:
                 f.write(content)
         file_name_resize = os.path.join(self.down_path, '略缩图', file_name)
         self._resize_image(BytesIO(content), outfile=file_name_resize)
