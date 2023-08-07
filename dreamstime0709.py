@@ -1,14 +1,10 @@
-import json
 import math
 import os
-import re
 import time
 from io import BytesIO
 
-# import aiofiles
 import aiohttp
 import asyncio
-import pandas as pd
 from PIL import Image
 from lxml import etree
 
@@ -22,7 +18,7 @@ class Spider(object):
     def __init__(self, down_path='', ):
         self.headers = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
-            'Referer':'https://www.dreamstime.com/search.php'
+            'Referer': 'https://www.dreamstime.com/search.php'
         }
         # self.params = dict()
         self.num = 0
@@ -37,7 +33,7 @@ class Spider(object):
         # self.base_url = 'https://www.dreamstime.com'
         self.limit = 25  # tcp连接数
         self.page = 0
-        self.sleep = 2  # 每页抓取间隔时间
+        self.sleep = 10  # 每页抓取间隔时间
         self.CONCURRENCY = 20  # 同时下载图片的个数
         self.origin = False  # 是否下载原图
 
@@ -105,33 +101,33 @@ class Spider(object):
     async def _get_img_links(self, page, q, session, get_totalpage=False):  # 获取图片连接
         # url = await self.trans_url(page, q, session)
         # if not url: return
-        url=self.url.format(q,page)
-        # print(url)
+        url = self.url.format(q, page).replace(' ', '-')
+        print(url)
         try:
             async with session.get(url=url, ) as respone:
                 r = await respone.text()
-
+                # print(r)
                 el = etree.HTML(r)
 
                 if get_totalpage:  # 获取总页数
 
                     totalpagepath = '/html/body/main/div[1]/div/div/div[1]/div/h1/text()'
-
+                    # '/html/body/main/div[1]/div/div/div[1]/div/h1'
                     totalpage = el.xpath(totalpagepath)
-
-                    total_page = math.ceil( int(totalpage[0].split()[0].replace(',', ''))/80) if totalpage else None
+                    print(totalpage)
+                    total_page = math.ceil(int(totalpage[0].split()[0].replace(',', '')) / 80) if totalpage else None
                     return total_page
 
                 path = '/html/body/main/div[2]/div/div/a[2]/picture/source[1]/@srcset'
 
                 page_urls = el.xpath(path)
-                page_urls=[x.split('?')[0] for x in page_urls]
+                page_urls = [x.split('?')[0] for x in page_urls]
                 # print(page_urls)
                 # return
 
-                semaphore = asyncio.Semaphore(self.CONCURRENCY)
+                # semaphore = asyncio.Semaphore(self.CONCURRENCY)
 
-                getpictasks = [self._get_content(ehurl,) for ehurl in page_urls]
+                getpictasks = [self._get_content(ehurl, ) for ehurl in page_urls]
                 await asyncio.gather(*getpictasks, return_exceptions=True)
 
                 self.page += 1
@@ -143,7 +139,7 @@ class Spider(object):
     async def _get_content(self, link, price=False):  # 传入的是图片连接
         if link.startswith('//'): link = f'https:{link}'
         async with aiohttp.TCPConnector(ssl=False, ) as conn:
-            async with aiohttp.ClientSession(connector=conn,trust_env=True) as session:
+            async with aiohttp.ClientSession(connector=conn, trust_env=True) as session:
                 try:
                     async with session.get(url=link) as response:
 
@@ -154,7 +150,7 @@ class Spider(object):
                         filename = f'{price.split("_")[-1]}.{filename.split(".")[-1]}'
 
                     await self._write_img(filename, content)
-                except (asyncio.TimeoutError, ClientPayloadError):
+                except (asyncio.TimeoutError,):
                     pass
 
     async def _write_img(self, file_name, content):
@@ -237,11 +233,12 @@ if __name__ == '__main__':
     start_time = time.perf_counter()
 
     q = r'd:\download\1.txt'  # 要查询的内容，如果含有.号，那么就按照文件按行查询,否则就按照内容下载
-    # q = 'flower'
+    q = 'marbling illustration'
+    # q='dogs'
 
     down_path = r'd:\download'
     startpage = 1
-    endpage = 2  # 如果填写0，那么全部下载
+    endpage = 0  # 如果填写0，那么全部下载
     spider = Spider(down_path)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(spider.filerun(startpage, endpage, q))
