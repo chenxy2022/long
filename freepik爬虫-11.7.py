@@ -2,9 +2,9 @@ import os
 import time
 from io import BytesIO
 
-# import aiofiles
 import aiohttp
 import asyncio
+import piexif
 import 文件操作大全
 from PIL import Image
 from lxml import etree
@@ -35,6 +35,8 @@ class Spider(object):
         self.sleep = 2  # 每页抓取间隔时间
         self.CONCURRENCY = 20  # 同时下载图片的个数
         self.origin = True  # 是否下载原图
+        self.prefix = 'freepik编号'  # 文件名的前缀
+        self.addtag = True  # 是否将网址写入备注
 
     async def run(self, startpage, endpage, q):
         print(f'开始下载:"{q}"')
@@ -78,11 +80,11 @@ class Spider(object):
             pic_path = '//*[@id="main"]/div/header/div/div[1]/div/img/@srcset'
             turls = el.xpath(pic_path)[0]
             pic_url = turls.split(',')[-1].split()[0]  # 图片网址(最大的图)
-            urltoname = url.split('/')[-1].split('.')[-2]
-            urltoname = url.replace('https://www.freepik.com', '').replace('/', '@')  # .split('.')[0]
-            # print(urltoname)
+            # urltoname = url.split('/')[-1].split('.')[-2]
+            # urltoname = url.replace('https://www.freepik.com', '').replace('/', '@')  # .split('.')[0]
+            # print(urltoname,url)
 
-            await self._get_content(pic_url, price=urltoname)
+            await self._get_content(pic_url, price=url)
 
     async def _get_img_links(self, page, q, session, get_totalpage=False):  # 获取图片连接
         url = self.url.format(page, q)
@@ -114,7 +116,7 @@ class Spider(object):
         except Exception as e:
             print(e)
 
-    async def _get_content(self, link, price=False):  # 传入的是图片连接
+    async def _get_content(self, link, price=''):  # 传入的是图片连接
         if link.startswith('//'): link = f'https:{link}'
 
         async with aiohttp.ClientSession() as session:
@@ -124,18 +126,21 @@ class Spider(object):
                     # print(link, price)
                     content = await response.read()
                 filename = link.split('/')[-1].split('?')[0]
-                print(f'---{link}')
+                # print(f'---{link}')
 
                 if price:
-                    filename = f'{price}.{filename.split(".")[-1]}'
-                'freepik编号+'
+                    nprice = price.split("_")[-1].split(".")[0]
+                    nprice = f'{self.prefix}{nprice}'
+                    filename = f'{nprice}.{filename.split(".")[-1]}'
+                    # print(filename)
 
-                await self._write_img(filename, content)
+                await self._write_img(filename, content, tag=price)
 
             except (asyncio.TimeoutError):
                 pass
 
-    async def _write_img(self, file_name, content):
+    async def _write_img(self, file_name, content, tag=""):
+        # file_name_old = file_name  # 保存原始文件名
         if self.origin:  # 是否下载原图
             file_name_origin = os.path.join(self.down_path, '原图', file_name)
             # print(file_name)
@@ -144,11 +149,15 @@ class Spider(object):
                 os.makedirs(ckpath)
             with open(file_name_origin, 'wb') as f:
                 f.write(content)
+            if self.addtag and tag:
+                addtag(file_name_origin, tag)
         # file_name_resize = os.path.join(self.down_path, '略缩图', file_name)                #    不保存缩略图
         # self._resize_image(BytesIO(content), outfile=file_name_resize)
 
         file_name_crop = os.path.join(self.down_path, '裁剪图', file_name)
         self._img_crop(BytesIO(content), output_fullname=file_name_crop)
+        if self.addtag and tag:
+            addtag(file_name_crop, tag)
         self.num += 1
 
     def _resize_image(self, infile, outfile='', minsize=300, is_file=True):  # 把图片像素改成308
@@ -218,6 +227,27 @@ class Spider(object):
         转换 = cropped.convert('RGB')
         self._resize_image(转换, outfile=output_fullname, is_file=False)
         # 转换.save(output_fullname)  # 保存
+
+
+def addtag(image_path, tag: str):
+    if image_path.split(".")[-1].lower() not in ["jpg", 'jpeg']:
+        print("不是jpg格式")
+        return
+    img = Image.open(image_path)  # 读图
+    info = img.info
+    if info.get("exif") is not None:
+        exif_dict = piexif.load(info["exif"])  # 提取exif信息
+    else:
+        exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "Interop": {}, "1st": {}, "thumbnail": None}
+    # 修改 标记信息
+    exif_dict["0th"][40092] = tuple(tag.encode("utf-16le"))  # 40092：备注信息 40094：标记
+    # 将修改后的Exif数据写回到图片中
+    exif_bytes = piexif.dump(exif_dict)
+    # outfile = image_path.split(".")[0] + "_new." + image_path.split(".")[1]
+    outfile = image_path
+    img.save(outfile, exif=exif_bytes, quality=100)
+    # 关闭图片
+    img.close()
 
 
 if __name__ == '__main__':
